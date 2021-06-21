@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import {download, urlToFilename} from './utils';
+import {download, urlToFilename} from "./utils";
 
 
 export function spider(url: string, cb: Function) {
