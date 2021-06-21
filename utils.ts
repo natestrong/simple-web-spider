@@ -1,6 +1,9 @@
 import * as path from 'path';
 import {URL} from 'url';
 import slug from "slug";
+import fs from "fs";
+import superagent from 'superagent';
+import mkdirp from "mkdirp";
 
 export function urlToFilename(url) {
     const parsedUrl = new URL(url);
@@ -15,3 +18,26 @@ export function urlToFilename(url) {
     return filename;
 }
 
+export function saveFile(filename, contents, cb) {
+    mkdirp(path.dirname(filename))
+        .then(() => {
+            fs.writeFile(filename, contents, err => {
+                if (err) return cb(err);
+                cb(null, filename, true);
+            });
+        })
+        .catch(err => cb(err));
+
+}
+
+export function download(url, filename, cb) {
+    console.log(`Downloading ${url} into ${filename}`);
+    superagent.get(url).end((err, res) => {
+        if (err) return cb(err);
+        saveFile(filename, res.text, err => {
+            if (err) return cb(err);
+            console.log(`Downloaded and saved: ${url}`);
+            cb(null, res.text);
+        });
+    });
+}

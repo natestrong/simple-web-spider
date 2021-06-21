@@ -1,35 +1,19 @@
-const superagent = require('superagent');
-import * as path from "path";
 import * as fs from 'fs';
-import {urlToFilename} from './utils';
-import mkdirp = require("mkdirp");
+import {download, urlToFilename} from './utils';
 
 
 export function spider(url: string, cb: Function) {
     const filename = urlToFilename(url);
     fs.access(filename, err => {
-        if (err && err.code === 'ENOENT') {
-            console.log(`Downloading ${url} into ${filename}`);
-            superagent.get(url).end((err, res) => {
-                if (err) {
-                    cb(err);
-                } else {
-                    mkdirp(path.dirname(filename))
-                        .then(() => fs.writeFile(filename, res.text, err => {
-                                if (err) {
-                                    cb(err);
-                                } else {
-                                    cb(null, filename, true);
-                                }
-                            }
-                        ))
-                        .catch(err => cb(err));
-                }
-            });
-        } else {
+        if (!err || err.code !== 'ENOENT') {
             console.log('file exists', filename);
-            cb(null, filename, false);
+            return cb(null, filename, false);
         }
+        download(url, filename, err => {
+            if (err) return cb(err);
+            cb(null, filename, true);
+        });
     });
 }
 
+spider('https://www.reddit.com/r/funny/', console.log);
