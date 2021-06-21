@@ -1,0 +1,8 @@
+# Project exclude paths
+/node_modules/
+/spider.js
+/spider.js.map
+/spider-cli.js
+/spider-cli.js.map
+/utils.js
+/utils.js.map
