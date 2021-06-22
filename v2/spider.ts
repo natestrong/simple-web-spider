@@ -3,52 +3,45 @@ import {download, getPageLinks, urlToFilename} from "./utils";
 
 const spidering = new Set();
 
-export function spider(url: string, nesting: number, cb: Function) {
+export function spider(url, nesting, queue) {
     if (spidering.has(url)) {
-        return process.nextTick(cb);
+        return;
     }
     spidering.add(url);
-
-    const filename = urlToFilename(url);
-    fs.readFile(filename, 'utf8', (err, fileContent) => {
-        if (err) {
-            if (err && err.code !== 'ENOENT') {
-                return cb(err);
-            }
-
-            // The file doesn't exist, so let's download it
-            return download(url, filename, (err, requestContent) => {
-                if (err) return cb(err);
-                spiderLinks(url, requestContent, nesting, cb);
-            });
-        }
-        // The file already exists, let's process the links
-        spiderLinks(url, fileContent, nesting, cb);
+    queue.pushTask((done) => {
+        spiderTask(url, nesting, queue, done);
     });
 }
 
-function spiderLinks(currentUrl, body, nesting, cb) {
+function spiderTask(url, nesting, queue, cb) {
+    const filename = urlToFilename(url);
+    fs.readFile(filename, 'utf8', (err, fileContent) => {
+        if (err) {
+            if (err.code !== 'ENOENT') {
+                return cb(err);
+            }
+            return download(url, filename, (err, requestContent) => {
+                if (err) {
+                    return cb(err);
+                }
+                spiderLinks(url, requestContent, nesting, queue);
+                return cb();
+            });
+        }
+        spiderLinks(url, fileContent, nesting, queue);
+        return cb();
+    });
+}
+
+function spiderLinks(currentUrl, body, nesting, queue) {
     if (nesting === 0) {
-        return process.nextTick(cb);
+        return;
     }
     const links = getPageLinks(currentUrl, body);
     if (links.length === 0) {
-        return process.nextTick(cb);
+        return;
     }
-    let completed = 0;
-    let hasErrors = false;
-
-    function done(err) {
-        if (err) {
-            hasErrors = true;
-            return cb(err);
-        }
-        if (++completed === links.length && !hasErrors) {
-            return cb();
-        }
-    }
-
-    links.forEach(link => spider(link, nesting - 1, done));
+    links.forEach(link => spider(link, nesting - 1, queue));
 }
 
 // spider('https://www.reddit.com/r/funny/', console.log);
