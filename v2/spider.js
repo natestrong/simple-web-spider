@@ -23,49 +23,44 @@ exports.spider = void 0;
 var fs = __importStar(require("fs"));
 var utils_1 = require("./utils");
 var spidering = new Set();
-function spider(url, nesting, cb) {
+function spider(url, nesting, queue) {
     if (spidering.has(url)) {
-        return process.nextTick(cb);
+        return;
     }
     spidering.add(url);
-    var filename = utils_1.urlToFilename(url);
-    fs.readFile(filename, 'utf8', function (err, fileContent) {
-        if (err) {
-            if (err && err.code !== 'ENOENT') {
-                return cb(err);
-            }
-            // The file doesn't exist, so let's download it
-            return utils_1.download(url, filename, function (err, requestContent) {
-                if (err)
-                    return cb(err);
-                spiderLinks(url, requestContent, nesting, cb);
-            });
-        }
-        // The file already exists, let's process the links
-        spiderLinks(url, fileContent, nesting, cb);
+    queue.pushTask(function (done) {
+        spiderTask(url, nesting, queue, done);
     });
 }
 exports.spider = spider;
-function spiderLinks(currentUrl, body, nesting, cb) {
+function spiderTask(url, nesting, queue, cb) {
+    var filename = utils_1.urlToFilename(url);
+    fs.readFile(filename, 'utf8', function (err, fileContent) {
+        if (err) {
+            if (err.code !== 'ENOENT') {
+                return cb(err);
+            }
+            return utils_1.download(url, filename, function (err, requestContent) {
+                if (err) {
+                    return cb(err);
+                }
+                spiderLinks(url, requestContent, nesting, queue);
+                return cb();
+            });
+        }
+        spiderLinks(url, fileContent, nesting, queue);
+        return cb();
+    });
+}
+function spiderLinks(currentUrl, body, nesting, queue) {
     if (nesting === 0) {
-        return process.nextTick(cb);
+        return;
     }
     var links = utils_1.getPageLinks(currentUrl, body);
     if (links.length === 0) {
-        return process.nextTick(cb);
+        return;
     }
-    var completed = 0;
-    var hasErrors = false;
-    function done(err) {
-        if (err) {
-            hasErrors = true;
-            return cb(err);
-        }
-        if (++completed === links.length && !hasErrors) {
-            return cb();
-        }
-    }
-    links.forEach(function (link) { return spider(link, nesting - 1, done); });
+    links.forEach(function (link) { return spider(link, nesting - 1, queue); });
 }
 // spider('https://www.reddit.com/r/funny/', console.log);
 //# sourceMappingURL=spider.js.map

@@ -51,7 +51,7 @@ function getLinkUrl(currentUrl, element) {
         return null;
     }
     return parsedLink.toString();
-};
+}
 
 export function getPageLinks(currentUrl, body) {
     return Array.from(cheerio.load(body)('a'))
@@ -59,4 +59,21 @@ export function getPageLinks(currentUrl, body) {
             return getLinkUrl(currentUrl, element);
         })
         .filter(Boolean);
+}
+
+export function promisify(callbackBasedApi) {
+    return function (...args) {
+        return new Promise((resolve, reject) => {
+            const newArgs = [
+                ...args,
+                (err, result) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    resolve(result);
+                }
+            ];
+            callbackBasedApi(...newArgs);
+        });
+    };
 }
