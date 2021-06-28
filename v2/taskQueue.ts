@@ -25,6 +25,7 @@ export class TaskQueue extends EventEmitter {
                 this.running--;
                 process.nextTick(this.next.bind(this));
             });
+            
             this.running++;
         }
     }
